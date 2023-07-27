@@ -3,10 +3,22 @@ from torchvision.io import read_image
 import os
 
 # 从一个文件夹中创建数据集，文件格式{name}.{label}.{suffix} （使用.分隔文件名，类型和扩展名）
+
+
 class cls_dataset(Dataset):
     def __init__(self, root, transform) -> None:
         super().__init__()
         self.root = root
+        self.dict = {
+            'q': 0,
+            'w': 1,
+            'e': 2,
+            'r': 3,
+            'a': 4,
+            's': 5,
+            'f': 6,
+            'd': 7
+        }
         self.set = []
 
         for root, dirs, files in os.walk(self.root):
@@ -14,10 +26,10 @@ class cls_dataset(Dataset):
             print(root, target)
             for file in files:
                 type_ = file.split('.')[-2]
+                t = self.dict[type_]
                 if (type_ != 'd'):
                     pic = read_image(os.path.join(root, file))
                     pic = transform(pic)
-                    t = int(type_)
                     information = {
                         'image': pic,
                         'target': t
@@ -27,5 +39,6 @@ class cls_dataset(Dataset):
     def __getitem__(self, index):
         img, target = self.set[index]['image'], self.set[index]['target']
         return img, target
+
     def __len__(self):
         return len(self.set)
