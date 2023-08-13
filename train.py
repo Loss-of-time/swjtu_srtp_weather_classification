@@ -1,30 +1,29 @@
-import time
-import json
-from pathlib import Path
-
+# local
 from utils import plot_curve
 from dataset import cls_dataset
-from settings import train_set_path, test_set_path
+from settings import train_set_path, test_set_path, log_path, model_save_path, batch_size, learn_rate, epoch
 
+# official
+import time
+import json
+
+# third party
 import torch
-from torch import nn, optim
 import torchvision.models as models
-
-from torch.optim.lr_scheduler import LambdaLR
-from torch.utils.data import DataLoader
 import torchvision.datasets as datasets
 import torchvision.transforms as transforms
+from torch import nn, optim
+from torch.optim.lr_scheduler import LambdaLR
+from torch.utils.data import DataLoader
+from loguru import logger
 # ------------------------------------------------------------
-batch_size = 40
-epoch = 32
-learn_rate = 1e-3
-# data = Path('./data')
-save_path = Path('./models')
+# Init
+# ------------------------------------------------------------
 device = torch.device('cuda')
-
 loss_list = []
-acc_list = []
-
+train_acc_list = []
+test_acc_list = []
+logger.add(log_path)
 transform = transforms.Compose([
     transforms.ToPILImage(),
     transforms.RandomHorizontalFlip(),
@@ -49,12 +48,14 @@ Model.fc = nn.Linear(Model.fc.in_features, 7)
 Model.to(device)
 
 criteon = nn.CrossEntropyLoss().to(device)
-optimizer = optim.Adam(Model.parameters(), lr=learn_rate)
-# optimizer = optim.SGD(Model.parameters(), lr=learn_rate,
-                    #   momentum=0.9, weight_decay=5e-4)
+# optimizer = optim.Adam(Model.parameters(), lr=learn_rate)
+optimizer = optim.SGD(Model.parameters(), lr=learn_rate,
+                      momentum=0.9, weight_decay=5e-4)
 # scheduler = LambdaLR(optimizer, lr_lambda=lambda epoch: 1/(epoch / 3 + 1))
 # ------------------------------------------------------------
-print(Model)
+# Train
+# ------------------------------------------------------------
+logger.info(Model)
 for epoch in range(1, epoch + 1):
     # train
     Model.train()
@@ -67,10 +68,26 @@ for epoch in range(1, epoch + 1):
         loss.backward()
         optimizer.step()
         # scheduler.step()
-    print(f'Epoch {epoch}')
-    print(f'loss: {loss}')
-    print(f'lr_rate: {optimizer.param_groups[0]["lr"]}')
+    logger.info(f'Epoch {epoch}')
+    logger.info(f'loss: {loss}')
+    logger.info(f'lr_rate: {optimizer.param_groups[0]["lr"]}')
+    loss_list.append(float(loss))
+
+    # judge
     Model.eval()
+    with torch.no_grad():
+        total_correct = 0
+        total_num = 0
+        for x, label in train_dataloader:
+            x, label = x.to(device), label.to(device)
+            logits = Model(x)
+            pred = logits.argmax(dim=1)
+            total_correct += torch.eq(pred, label).float().sum().item()
+            total_num += x.size(0)
+        acc = total_correct / total_num
+        logger.info(f"trian set acc: {acc}")
+    train_acc_list.append(float(acc))
+
     with torch.no_grad():
         total_correct = 0
         total_num = 0
@@ -81,14 +98,15 @@ for epoch in range(1, epoch + 1):
             total_correct += torch.eq(pred, label).float().sum().item()
             total_num += x.size(0)
         acc = total_correct / total_num
-        print(f"acc: {acc}")
-    loss_list.append(float(loss))
-    acc_list.append(float(acc))
-    name = 'resnet50'
+        logger.info(f"test set acc: {acc}")
+    test_acc_list.append(float(acc))
+
+    model_name = 'test'
     suffix = 'pth'
-    torch.save(Model.state_dict(), save_path / f'{name}.{suffix}')
+    # torch.save(Model.state_dict(), model_save_path / f'{model_name}.{suffix}')
     end = time.time()
-    print(f"epoch consume: {end - start}")
+    logger.info(f"epoch consume: {end - start}")
 
 plot_curve(loss_list)
-plot_curve(acc_list)
+plot_curve(train_acc_list)
+plot_curve(test_acc_list)
