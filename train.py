@@ -26,32 +26,36 @@ test_acc_list = []
 logger.add(log_path)
 transform = transforms.Compose([
     transforms.ToPILImage(),
-    transforms.RandomHorizontalFlip(),
+    # transforms.RandomHorizontalFlip(),
+    # transforms.RandomRotation(90),
+    # transforms.RandomGrayscale(),
     transforms.ToTensor(),
     transforms.Normalize((0.4914, 0.4822, 0.4465), (0.2023, 0.1994, 0.2010))
 ])
-
-# data = str(data)
-# trainset = datasets.CIFAR10(
-#     root=data, train=True, download=True, transform=transform1)
-# testset = datasets.CIFAR10(root=data, train=False,
-#    download=True, transform=transform2)
+# -----------------------------
+'''
+data = str(data)
+trainset = datasets.CIFAR10(
+    root=data, train=True, download=True, transform=transform1)
+testset = datasets.CIFAR10(root=data, train=False,
+   download=True, transform=transform2)
+'''
 trainset = cls_dataset(train_set_path, transform=transform)
 testset = cls_dataset(test_set_path, transform=transform)
-
 train_dataloader = DataLoader(trainset, batch_size=batch_size, shuffle=True)
 test_dataloader = DataLoader(testset, batch_size=batch_size, shuffle=True)
-
+# -----------------------------
+# Model = models.vgg16(pretrained=True)
+# Model.classifier[6] = torch.nn.Linear(4096, 7)
 Model = models.resnet18(pretrained=True)
-# Model.fc = nn.Linear(Model.fc.in_features, 10)
 Model.fc = nn.Linear(Model.fc.in_features, 7)
-Model.to(device)
 
+Model.to(device)
+# -----------------------------
 criteon = nn.CrossEntropyLoss().to(device)
-# optimizer = optim.Adam(Model.parameters(), lr=learn_rate)
-optimizer = optim.SGD(Model.parameters(), lr=learn_rate,
-                      momentum=0.9, weight_decay=5e-4)
-# scheduler = LambdaLR(optimizer, lr_lambda=lambda epoch: 1/(epoch / 3 + 1))
+optimizer = optim.Adam(Model.parameters(), lr=learn_rate)
+# optimizer = optim.SGD(Model.parameters(), lr=learn_rate,
+#                       momentum=0.9, weight_decay=5e-4)
 # ------------------------------------------------------------
 # Train
 # ------------------------------------------------------------
@@ -85,7 +89,7 @@ for epoch in range(1, epoch + 1):
             total_correct += torch.eq(pred, label).float().sum().item()
             total_num += x.size(0)
         acc = total_correct / total_num
-        logger.info(f"trian set acc: {acc}")
+        logger.info(f"trian set acc: {acc:.2f}")
     train_acc_list.append(float(acc))
 
     with torch.no_grad():
@@ -98,7 +102,7 @@ for epoch in range(1, epoch + 1):
             total_correct += torch.eq(pred, label).float().sum().item()
             total_num += x.size(0)
         acc = total_correct / total_num
-        logger.info(f"test set acc: {acc}")
+        logger.info(f"test set acc: {acc:.2f}")
     test_acc_list.append(float(acc))
 
     model_name = 'test'

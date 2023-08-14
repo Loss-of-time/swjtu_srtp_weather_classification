@@ -1,7 +1,7 @@
 from pathlib import Path
 
-batch_size = 128
-epoch = 150
+batch_size = 40
+epoch = 100
 learn_rate = 5e-4
 train_set_path = Path('data/train-set')
 test_set_path = Path('data/test-set')
