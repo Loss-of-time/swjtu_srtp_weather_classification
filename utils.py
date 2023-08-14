@@ -1,5 +1,14 @@
+import os
+import shutil
+
 import torch
 from matplotlib import pyplot as plt
+
+def delete_folder_contents(folder_path):
+    # 删除文件夹中的所有文件和子文件夹
+    shutil.rmtree(folder_path)
+    os.mkdir(folder_path)
+
 
 def plot_curve(data):
     fig = plt.figure()
