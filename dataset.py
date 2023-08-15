@@ -16,8 +16,7 @@ class cls_dataset(Dataset):
             'r': 3,
             'a': 4,
             's': 5,
-            'f': 6,
-            'd': 7
+            'f': 6
         }
         self.set = []
 
