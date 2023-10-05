@@ -29,18 +29,22 @@ class TorchFactory(object):
     @staticmethod
     def get_dataloader(data_name: str, transform: transforms.Compose):
         features = 0
-        trainset = cls_dataset(train_set_path, transform=transform)
-        testset = cls_dataset(test_set_path, transform=transform)
         if data_name == 'mine':
+            train_set = cls_dataset(train_set_path, transform=transform)
+            test_set = cls_dataset(test_set_path, transform=transform)
             features = 7
         elif data_name == 'cifar10':
-            trainset = datasets.CIFAR10(root='./data', train=True, download=True, transform=transform)
-            testset = datasets.CIFAR10(root='./data', train=False, download=True, transform=transform)
+            train_set = datasets.CIFAR10(
+                root='./data/cifar10', train=True, download=True, transform=transform)
+            test_set = datasets.CIFAR10(
+                root='./data/cifar10', train=False, download=True, transform=transform)
             features = 10
+        else:
+            return TorchFactory.get_dataloader('mine', transform)
         train_dataloader = DataLoader(
-            trainset, batch_size=batch_size, shuffle=True)
+            train_set, batch_size=batch_size, shuffle=True)
         test_dataloader = DataLoader(
-            testset, batch_size=batch_size, shuffle=True)
+            test_set, batch_size=batch_size, shuffle=True)
         return train_dataloader, test_dataloader, features
 
     @staticmethod
@@ -48,6 +52,7 @@ class TorchFactory(object):
         pretrained_dict = {
             'resnet18': models.resnet18,
             'resnet50': models.resnet50,
+            'resnet152': models.resnet152,
             'vgg16':  models.vgg16,
             'alexnet': models.alexnet
         }
@@ -94,46 +99,51 @@ class TrainInfo(object):
         return self.test_acc_list.index(max(self.test_acc_list))
 
 
-
-
-
-def judge(model: nn.Module, dataloader: DataLoader) -> float:
+def judge(model: nn.Module, dataloader: DataLoader, features: int) -> tuple[float, list, list]:
     model.eval()
     with torch.no_grad():
         total_correct = 0
         total_num = 0
+        each_correct = [0 for i in range(features)]
+        each_total = [0 for i in range(features)]
         for x, label in dataloader:
             x, label = x.to(device), label.to(device)
             logits = model.forward(x)
             pred = logits.argmax(dim=1)
             total_correct += torch.eq(pred, label).float().sum().item()
             total_num += x.size(0)
+            # 召回率统计
+            for idx, _label in enumerate(label):
+                each_total[_label] += 1
+                if (pred[idx] == _label):
+                    each_correct[_label] += 1
         acc = total_correct / total_num
-    return acc
+    return acc, each_correct, each_total
 
 
 def get_model_name(epoch: int, name: str = 'resnet', suffix='pth') -> str:
     return '{}_epoch{:03d}.{}'.format(name, epoch, suffix)
 
 
-def train(epoch: int, model: nn.Module, train_dataloader: DataLoader, test_dataloader: DataLoader, criteon: nn.modules.loss._WeightedLoss, optimizer: optim.Optimizer, model_name : str, features:int, **kwargs) -> TrainInfo:
+def train(epoch: int, model: nn.Module, train_dataloader: DataLoader, test_dataloader: DataLoader, criteon: nn.modules.loss._WeightedLoss, optimizer: optim.Optimizer, model_name: str, features: int, **kwargs) -> TrainInfo:
     def train_epoch():
         model.train()
-        for batchidx, (x, label) in enumerate(train_dataloader):
+        loss_max = 0.
+        for batch_idx, (x, label) in enumerate(train_dataloader):
             x, label = x.to(device), label.to(device)
             logits = model.forward(x)
             loss = criteon.forward(logits, label)
+            loss_max = max(loss_max, loss)
             optimizer.zero_grad()
             loss.backward()
             optimizer.step()
             # scheduler.step()
-        return loss
+        return loss_max
     loss_list = []
     train_acc_list = []
     test_acc_list = []
     for ep in range(1, epoch + 1):
         # train
-        model.train()
         start = time.time()
         loss = train_epoch()
         logger.info(f'Epoch {ep}')
@@ -141,12 +151,16 @@ def train(epoch: int, model: nn.Module, train_dataloader: DataLoader, test_datal
         logger.info(f'lr_rate: {optimizer.param_groups[0]["lr"]}')
         loss_list.append(float(loss))
 
-        acc = judge(model, train_dataloader)
-        logger.info(f"trian set acc: {acc:.2f}")
+        acc, correct, total = judge(model, train_dataloader, features)
+        logger.info(f"train set acc: {acc:.2f}")
         train_acc_list.append(float(acc))
 
-        acc = judge(model, test_dataloader)
+        acc, correct, total = judge(model, test_dataloader, features)
         logger.info(f"test set acc: {acc:.2f}")
+        recall = ''
+        for i in range(features):
+            recall += f'{correct[i]} / {total[i]}   '
+        logger.info(f'RECALL: {recall}')
         test_acc_list.append(float(acc))
 
         torch.save(model.state_dict(), model_save_path /
@@ -169,14 +183,15 @@ transform = transforms.Compose([
     transforms.RandomRotation(90),
     transforms.ToTensor(),
     transforms.Normalize((0.485, 0.456, 0.406),
-                         (0.229, 0.224, 0.225))
+                         (0.229, 0.224, 0.225)),
 ])
 
-train_dataloader, test_dataloader, features = TorchFactory.get_dataloader(data_name, transform)
+train_dataloader, test_dataloader, features = TorchFactory.get_dataloader(
+    data_name, transform)
 # -----------------------------
 model = TorchFactory.get_model(model_name, features)
 model.to(device)
-logger.debug(model)
+# logger.debug(model)
 # -----------------------------
 criteon = nn.CrossEntropyLoss().to(device)
 optimizer = TorchFactory.get_optimizer(optimizer_name, model)
