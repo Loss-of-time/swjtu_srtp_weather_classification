@@ -43,10 +43,10 @@ class cls_dataset(Dataset):
 
     def __len__(self):
         return len(self.set)
+
     def __str__(self):
         count = {0: 0, 1: 0, 2: 0, 3: 0, 4: 0, 5: 0}
         for item in self.set:
             target = item['target']
             count[target] += 1
         return f"图片数量：晴({count[0]}) 阴({count[1]}) 雨({count[2]}) 雪({count[3]}) 雾({count[4]}) 夜晚({count[5]})"
-
