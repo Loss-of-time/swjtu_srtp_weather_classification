@@ -32,7 +32,8 @@ class TorchFactory(object):
         if data_name == 'mine':
             train_set = cls_dataset(train_set_path, transform=transform)
             test_set = cls_dataset(test_set_path, transform=transform)
-            features = 7
+            logger.info(train_set)
+            features = cls_dataset.type_num
         elif data_name == 'cifar10':
             train_set = datasets.CIFAR10(
                 root='./data/cifar10', train=True, download=True, transform=transform)
@@ -167,8 +168,6 @@ if __name__ == "__main__":
     transform = transforms.Compose([
         transforms.ToPILImage(),
         transforms.RandomHorizontalFlip(),
-        transforms.RandomGrayscale(),
-        transforms.RandomCrop(224),
         transforms.RandomRotation(90),
         transforms.ToTensor(),
         transforms.Normalize((0.485, 0.456, 0.406),

@@ -6,17 +6,19 @@ import os
 
 
 class cls_dataset(Dataset):
+
+    type_num = 6
+
     def __init__(self, root, transform) -> None:
         super().__init__()
         self.root = root
         self.dict = {
-            'q': 0,
-            'w': 1,
-            'e': 2,
-            'r': 3,
-            'a': 4,
-            's': 5,
-            'f': 6
+            'q': 0,  # 晴
+            'e': 1,  # 阴
+            'r': 2,  # 雨
+            'a': 3,  # 雪
+            's': 4,  # 雾
+            'f': 5   # 夜晚
         }
         self.set = []
 
@@ -41,3 +43,10 @@ class cls_dataset(Dataset):
 
     def __len__(self):
         return len(self.set)
+    def __str__(self):
+        count = {0: 0, 1: 0, 2: 0, 3: 0, 4: 0, 5: 0}
+        for item in self.set:
+            target = item['target']
+            count[target] += 1
+        return f"图片数量：晴({count[0]}) 阴({count[1]}) 雨({count[2]}) 雪({count[3]}) 雾({count[4]}) 夜晚({count[5]})"
+
