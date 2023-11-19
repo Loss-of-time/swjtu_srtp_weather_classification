@@ -26,8 +26,22 @@ from loguru import logger
 
 
 class TorchFactory(object):
+    """
+    A factory class for creating PyTorch models, dataloaders, and optimizers.
+    """
+
     @staticmethod
     def get_dataloader(data_name: str, transform: transforms.Compose):
+        """
+        Get the dataloader for the specified dataset.
+
+        Args:
+            data_name (str): The name of the dataset.
+            transform (torchvision.transforms.Compose): The data transformation pipeline.
+
+        Returns:
+            tuple: A tuple containing the train dataloader, test dataloader, and number of features.
+        """
         features = 0
         if data_name == 'mine':
             train_set = cls_dataset(train_set_path, transform=transform)
@@ -50,6 +64,16 @@ class TorchFactory(object):
 
     @staticmethod
     def get_model(model_name: str, new_features: int) -> nn.Module:
+        """
+        Get the specified PyTorch model.
+
+        Args:
+            model_name (str): The name of the model.
+            new_features (int): The number of output features for the last layer.
+
+        Returns:
+            torch.nn.Module: The PyTorch model.
+        """
         pretrained_dict = {
             'resnet18': models.resnet18,
             'resnet50': models.resnet50,
@@ -75,17 +99,42 @@ class TorchFactory(object):
 
     @staticmethod
     def get_optimizer(optimizer_name: str, model: nn.Module) -> optim.Optimizer:
+        """
+        Get the specified optimizer for the given model.
+
+        Args:
+            optimizer_name (str): The name of the optimizer.
+            model (torch.nn.Module): The PyTorch model.
+
+        Returns:
+            torch.optim.Optimizer: The optimizer.
+        """
         optimizer_name = optimizer_name.lower()
         if optimizer_name == 'adam':
             optimizer = optim.Adam(model.parameters(), lr=learn_rate)
         elif optimizer_name == 'sgd':
             optimizer = optim.SGD(model.parameters(), lr=learn_rate,
                                   momentum=0.9, weight_decay=5e-4)
+        elif optimizer_name == 'rmsprop':
+            optimizer = optim.RMSprop(model.parameters(), lr=learn_rate)
         else:
             optimizer = TorchFactory.get_optimizer('adam', model)
         return optimizer
 
+
 def judge(model: nn.Module, dataloader: DataLoader, features: int) -> tuple[float, list, list]:
+    """
+    Evaluate the performance of a model on a given dataset.
+
+    Args:
+        model (nn.Module): The model to evaluate.
+        dataloader (DataLoader): The dataloader for the dataset.
+        features (int): The number of features/classes in the dataset.
+
+    Returns:
+        tuple[float, list, list]: A tuple containing the accuracy, the number of correct predictions for each class,
+        and the total number of instances for each class.
+    """
     model.eval()
     with torch.no_grad():
         total_correct = 0
@@ -111,7 +160,31 @@ def get_model_name(epoch: int, name: str = 'resnet', suffix='pth') -> str:
     return '{}_epoch{:03d}.{}'.format(name, epoch, suffix)
 
 
-def train(epoch: int, model: nn.Module, train_dataloader: DataLoader, test_dataloader: DataLoader, criteon: nn.modules.loss._WeightedLoss, optimizer: optim.Optimizer, model_name: str, features: int, **kwargs) -> tuple[list, list, list]:
+def train(epoch: int,
+          model: nn.Module,
+          train_dataloader: DataLoader,
+          test_dataloader: DataLoader,
+          criteon: nn.modules.loss._WeightedLoss,
+          optimizer: optim.Optimizer,
+          model_name: str,
+          features: int) -> tuple[list, list, list]:
+    """
+    Trains the model for the specified number of epochs.
+
+    Args:
+        epoch (int): The number of epochs to train the model.
+        model (nn.Module): The model to be trained.
+        train_dataloader (DataLoader): The dataloader for the training data.
+        test_dataloader (DataLoader): The dataloader for the test data.
+        criteon (nn.modules.loss._WeightedLoss): The loss function.
+        optimizer (optim.Optimizer): The optimizer used for training.
+        model_name (str): The name of the model.
+        features (int): The number of features in the data.
+        **kwargs: Additional keyword arguments.
+
+    Returns:
+        tuple[list, list, list]: A tuple containing the lists of loss, train accuracy, and test accuracy.
+    """
     def train_epoch():
         model.train()
         loss_max = 0.
@@ -157,7 +230,6 @@ def train(epoch: int, model: nn.Module, train_dataloader: DataLoader, test_datal
     return loss_list, train_acc_list, test_acc_list
 
 
-
 if __name__ == "__main__":
     # ------------------------------------------------------------
     # Init
@@ -171,7 +243,7 @@ if __name__ == "__main__":
         transforms.RandomRotation(90),
         transforms.ToTensor(),
         transforms.Normalize((0.485, 0.456, 0.406),
-                            (0.229, 0.224, 0.225)),
+                             (0.229, 0.224, 0.225)),
     ])
 
     train_dataloader, test_dataloader, features = TorchFactory.get_dataloader(
@@ -202,6 +274,7 @@ if __name__ == "__main__":
     best_model_name = get_model_name(best_index, model_name)
     best_model_path = model_save_path / best_model_name
     shutil.copy(best_model_path, best_model_save_path)
+    # 虽然保存了表现最好的模型，但我们不适用它进行在训练，因为它可能会过拟合
     logger.info('The best model is {}, which accuracy is {:.2f}. And save in {}'.format(
         best_model_name, test_acc_list[best_index], best_model_save_path))
 
