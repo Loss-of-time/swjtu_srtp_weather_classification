@@ -84,21 +84,6 @@ class TorchFactory(object):
             optimizer = TorchFactory.get_optimizer('adam', model)
         return optimizer
 
-
-class TrainInfo(object):
-    loss_list = []
-    train_acc_list = []
-    test_acc_list = []
-
-    def __init__(self, loss: list, train: list, test: list) -> None:
-        self.loss_list = loss
-        self.train_acc_list = train
-        self.test_acc_list = test
-
-    def best_index(self):
-        return self.test_acc_list.index(max(self.test_acc_list))
-
-
 def judge(model: nn.Module, dataloader: DataLoader, features: int) -> tuple[float, list, list]:
     model.eval()
     with torch.no_grad():
@@ -125,7 +110,7 @@ def get_model_name(epoch: int, name: str = 'resnet', suffix='pth') -> str:
     return '{}_epoch{:03d}.{}'.format(name, epoch, suffix)
 
 
-def train(epoch: int, model: nn.Module, train_dataloader: DataLoader, test_dataloader: DataLoader, criteon: nn.modules.loss._WeightedLoss, optimizer: optim.Optimizer, model_name: str, features: int, **kwargs) -> TrainInfo:
+def train(epoch: int, model: nn.Module, train_dataloader: DataLoader, test_dataloader: DataLoader, criteon: nn.modules.loss._WeightedLoss, optimizer: optim.Optimizer, model_name: str, features: int, **kwargs) -> tuple[list, list, list]:
     def train_epoch():
         model.train()
         loss_max = 0.
@@ -168,55 +153,59 @@ def train(epoch: int, model: nn.Module, train_dataloader: DataLoader, test_datal
 
         end = time.time()
         logger.info(f"epoch consume: {end - start:.2f}s")
-    return TrainInfo(loss_list, train_acc_list, test_acc_list)
+    return loss_list, train_acc_list, test_acc_list
 
 
-# ------------------------------------------------------------
-# Init
-# ------------------------------------------------------------
-logger.add(log_path, rotation=log_rotation)
-device = torch.device('cuda')
-# -----------------------------
-transform = transforms.Compose([
-    transforms.ToPILImage(),
-    transforms.RandomHorizontalFlip(),
-    transforms.RandomRotation(90),
-    transforms.ToTensor(),
-    transforms.Normalize((0.485, 0.456, 0.406),
-                         (0.229, 0.224, 0.225)),
-])
 
-train_dataloader, test_dataloader, features = TorchFactory.get_dataloader(
-    data_name, transform)
-# -----------------------------
-model = TorchFactory.get_model(model_name, features)
-model.to(device)
-# logger.debug(model)
-# -----------------------------
-criteon = nn.CrossEntropyLoss().to(device)
-optimizer = TorchFactory.get_optimizer(optimizer_name, model)
-# ------------------------------------------------------------
-# Train
-# ------------------------------------------------------------
-delete_folder_contents(model_save_path)
-info = train(
-    epoch,
-    model,
-    train_dataloader,
-    test_dataloader,
-    criteon,
-    optimizer,
-    model_name,
-    features
-)
-# -----------------------------
-best_index = info.best_index()
-best_model_name = get_model_name(best_index, model_name)
-best_model_path = model_save_path / best_model_name
-shutil.copy(best_model_path, best_model_save_path)
-logger.info('The best model is {}, which accuracy is {:.2f}. And save in {}'.format(
-    best_model_name, info.test_acc_list[best_index], best_model_save_path))
+if __name__ == "__main__":
+    # ------------------------------------------------------------
+    # Init
+    # ------------------------------------------------------------
+    logger.add(log_path, rotation=log_rotation)
+    device = torch.device('cuda')
+    # -----------------------------
+    transform = transforms.Compose([
+        transforms.ToPILImage(),
+        transforms.RandomHorizontalFlip(),
+        transforms.RandomGrayscale(),
+        transforms.RandomCrop(224),
+        transforms.RandomRotation(90),
+        transforms.ToTensor(),
+        transforms.Normalize((0.485, 0.456, 0.406),
+                            (0.229, 0.224, 0.225)),
+    ])
 
-plot_curve(info.loss_list)
-plot_curve(info.train_acc_list)
-plot_curve(info.test_acc_list)
+    train_dataloader, test_dataloader, features = TorchFactory.get_dataloader(
+        data_name, transform)
+    # -----------------------------
+    model = TorchFactory.get_model(model_name, features)
+    model.to(device)
+    # logger.debug(model)
+    # -----------------------------
+    criteon = nn.CrossEntropyLoss().to(device)
+    optimizer = TorchFactory.get_optimizer(optimizer_name, model)
+    # ------------------------------------------------------------
+    # Train
+    # ------------------------------------------------------------
+    delete_folder_contents(model_save_path)
+    loss_list, train_acc_list, test_acc_list = train(
+        epoch,
+        model,
+        train_dataloader,
+        test_dataloader,
+        criteon,
+        optimizer,
+        model_name,
+        features
+    )
+    best_index = test_acc_list.index(max(test_acc_list))
+    # -----------------------------
+    best_model_name = get_model_name(best_index, model_name)
+    best_model_path = model_save_path / best_model_name
+    shutil.copy(best_model_path, best_model_save_path)
+    logger.info('The best model is {}, which accuracy is {:.2f}. And save in {}'.format(
+        best_model_name, test_acc_list[best_index], best_model_save_path))
+
+    plot_curve(loss_list)
+    plot_curve(train_acc_list)
+    plot_curve(test_acc_list)
