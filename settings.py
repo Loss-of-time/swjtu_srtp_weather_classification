@@ -4,7 +4,7 @@ from pathlib import Path
 log_rotation = "128 KB"
 log_path = Path("log/log.log")
 # -----------------------------
-data_name = "mine"
+data_name = "rscm"
 model_name = "resnet18"
 optimizer_name = "rmsprop"  # adam | sgd | rmsprop
 batch_size = 140  # 6GB显存 & 224 x 224 px

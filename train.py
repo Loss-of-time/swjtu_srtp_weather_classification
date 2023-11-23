@@ -1,6 +1,6 @@
 # local
 from utils import plot_curve, delete_folder_contents
-from dataset import cls_dataset
+from dataset import cls_dataset, RSCM2017
 from settings import *
 
 # official
@@ -16,7 +16,7 @@ import torchvision.datasets as datasets
 import torchvision.transforms as transforms
 from torch import nn, optim
 from torch.optim.lr_scheduler import LambdaLR
-from torch.utils.data import DataLoader
+from torch.utils.data import DataLoader, random_split
 from loguru import logger
 
 
@@ -48,6 +48,13 @@ class TorchFactory(object):
             test_set = cls_dataset(test_set_path, transform=transform)
             logger.info(train_set)
             features = cls_dataset.type_num
+        elif data_name == "rscm":
+            path = Path(
+                r"C:\Code\Python\swjtu_srtp_weather_classification\data\weather_classification"
+            )
+            date_set = RSCM2017(path, transform)
+            train_set, test_set = random_split(date_set, [0.8, 0.2])
+            features = RSCM2017.type_num
         elif data_name == "cifar10":
             train_set = datasets.CIFAR10(
                 root="./data/cifar10", train=True, download=True, transform=transform
@@ -59,7 +66,7 @@ class TorchFactory(object):
         else:
             return TorchFactory.get_dataloader("mine", transform)
         train_dataloader = DataLoader(train_set, batch_size=batch_size, shuffle=True)
-        test_dataloader = DataLoader(test_set, batch_size=batch_size, shuffle=True)
+        test_dataloader = DataLoader(test_set, batch_size=batch_size, shuffle=False)
         return train_dataloader, test_dataloader, features
 
     @staticmethod
@@ -246,17 +253,25 @@ if __name__ == "__main__":
             transforms.ToPILImage(),
             # transforms.RandomHorizontalFlip(),
             # transforms.RandomRotation(90),
+            transforms.Resize((128, 128)),
             transforms.ToTensor(),
             transforms.Normalize((0.485, 0.456, 0.406), (0.229, 0.224, 0.225)),
         ]
     )
 
+    logger.info("Start training...")
+    start_time = time.time()
     train_dataloader, test_dataloader, features = TorchFactory.get_dataloader(
         data_name, transform
     )
+    end_time = time.time()
+    logger.info(f"Data loading consume: {end_time - start_time:.2f}s")
     # -----------------------------
+    start_time = time.time()
     model = TorchFactory.get_model(model_name, features)
     model.to(device)
+    end_time = time.time()
+    logger.info(f"Model loading consume: {end_time - start_time:.2f}s")
     # logger.debug(model)
     # -----------------------------
     criteon = nn.CrossEntropyLoss().to(device)

@@ -72,11 +72,15 @@ class RSCM2017(Dataset):
         for root, dirs, files in os.walk(path):
             for file in files:
                 if file.split(".")[-1] == "jpg":
-                    self.images.append(os.path.join(root, file))
+                    pic = read_image(os.path.join(root, file))
+                    if pic.shape[0] == 1:
+                        pic = pic.repeat(3, 1, 1)
+                    pic = transform(pic)
+                    self.images.append(pic)
                     self.labels.append(self.type_dict[root.split("\\")[-1]])
 
     def __getitem__(self, index) -> Any:
-        image = read_image(self.images[index])
+        image = self.images[index]
         label = self.labels[index]
         return image, label
 
