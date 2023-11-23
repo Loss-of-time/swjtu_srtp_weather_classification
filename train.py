@@ -43,23 +43,23 @@ class TorchFactory(object):
             tuple: A tuple containing the train dataloader, test dataloader, and number of features.
         """
         features = 0
-        if data_name == 'mine':
+        if data_name == "mine":
             train_set = cls_dataset(train_set_path, transform=transform)
             test_set = cls_dataset(test_set_path, transform=transform)
             logger.info(train_set)
             features = cls_dataset.type_num
-        elif data_name == 'cifar10':
+        elif data_name == "cifar10":
             train_set = datasets.CIFAR10(
-                root='./data/cifar10', train=True, download=True, transform=transform)
+                root="./data/cifar10", train=True, download=True, transform=transform
+            )
             test_set = datasets.CIFAR10(
-                root='./data/cifar10', train=False, download=True, transform=transform)
+                root="./data/cifar10", train=False, download=True, transform=transform
+            )
             features = 10
         else:
-            return TorchFactory.get_dataloader('mine', transform)
-        train_dataloader = DataLoader(
-            train_set, batch_size=batch_size, shuffle=True)
-        test_dataloader = DataLoader(
-            test_set, batch_size=batch_size, shuffle=True)
+            return TorchFactory.get_dataloader("mine", transform)
+        train_dataloader = DataLoader(train_set, batch_size=batch_size, shuffle=True)
+        test_dataloader = DataLoader(test_set, batch_size=batch_size, shuffle=True)
         return train_dataloader, test_dataloader, features
 
     @staticmethod
@@ -75,27 +75,25 @@ class TorchFactory(object):
             torch.nn.Module: The PyTorch model.
         """
         pretrained_dict = {
-            'resnet18': models.resnet18,
-            'resnet50': models.resnet50,
-            'resnet152': models.resnet152,
-            'vgg16':  models.vgg16,
-            'alexnet': models.alexnet
+            "resnet18": models.resnet18,
+            "resnet50": models.resnet50,
+            "resnet152": models.resnet152,
+            "vgg16": models.vgg16,
+            "alexnet": models.alexnet,
         }
         if model_name in pretrained_dict:
             model = pretrained_dict[model_name](pretrained=True)
-            if 'resnet' in model_name:
+            if "resnet" in model_name:
                 model.fc = nn.Linear(model.fc.in_features, new_features)
-            elif 'vgg' in model_name:
+            elif "vgg" in model_name:
                 num_features = model.classifier[6].in_features
-                model.classifier[6] = torch.nn.Linear(
-                    num_features, new_features)
-            elif 'alexnet' in model_name:
+                model.classifier[6] = torch.nn.Linear(num_features, new_features)
+            elif "alexnet" in model_name:
                 num_features = model.classifier[6].in_features
-                model.classifier[6] = torch.nn.Linear(
-                    num_features, new_features)
+                model.classifier[6] = torch.nn.Linear(num_features, new_features)
             return model
         else:
-            return TorchFactory.get_model('resnet18', new_features)
+            return TorchFactory.get_model("resnet18", new_features)
 
     @staticmethod
     def get_optimizer(optimizer_name: str, model: nn.Module) -> optim.Optimizer:
@@ -110,19 +108,22 @@ class TorchFactory(object):
             torch.optim.Optimizer: The optimizer.
         """
         optimizer_name = optimizer_name.lower()
-        if optimizer_name == 'adam':
+        if optimizer_name == "adam":
             optimizer = optim.Adam(model.parameters(), lr=learn_rate)
-        elif optimizer_name == 'sgd':
-            optimizer = optim.SGD(model.parameters(), lr=learn_rate,
-                                  momentum=0.9, weight_decay=5e-4)
-        elif optimizer_name == 'rmsprop':
+        elif optimizer_name == "sgd":
+            optimizer = optim.SGD(
+                model.parameters(), lr=learn_rate, momentum=0.9, weight_decay=5e-4
+            )
+        elif optimizer_name == "rmsprop":
             optimizer = optim.RMSprop(model.parameters(), lr=learn_rate)
         else:
-            optimizer = TorchFactory.get_optimizer('adam', model)
+            optimizer = TorchFactory.get_optimizer("adam", model)
         return optimizer
 
 
-def judge(model: nn.Module, dataloader: DataLoader, features: int) -> tuple[float, list, list]:
+def judge(
+    model: nn.Module, dataloader: DataLoader, features: int
+) -> tuple[float, list, list]:
     """
     Evaluate the performance of a model on a given dataset.
 
@@ -150,24 +151,26 @@ def judge(model: nn.Module, dataloader: DataLoader, features: int) -> tuple[floa
             # 召回率统计
             for idx, _label in enumerate(label):
                 each_total[_label] += 1
-                if (pred[idx] == _label):
+                if pred[idx] == _label:
                     each_correct[_label] += 1
         acc = total_correct / total_num
     return acc, each_correct, each_total
 
 
-def get_model_name(epoch: int, name: str = 'resnet', suffix='pth') -> str:
-    return '{}_epoch{:03d}.{}'.format(name, epoch, suffix)
+def get_model_name(epoch: int, name: str = "resnet", suffix="pth") -> str:
+    return "{}_epoch{:03d}.{}".format(name, epoch, suffix)
 
 
-def train(epoch: int,
-          model: nn.Module,
-          train_dataloader: DataLoader,
-          test_dataloader: DataLoader,
-          criteon: nn.modules.loss._WeightedLoss,
-          optimizer: optim.Optimizer,
-          model_name: str,
-          features: int) -> tuple[list, list, list]:
+def train(
+    epoch: int,
+    model: nn.Module,
+    train_dataloader: DataLoader,
+    test_dataloader: DataLoader,
+    criteon: nn.modules.loss._WeightedLoss,
+    optimizer: optim.Optimizer,
+    model_name: str,
+    features: int,
+) -> tuple[list, list, list]:
     """
     Trains the model for the specified number of epochs.
 
@@ -185,9 +188,10 @@ def train(epoch: int,
     Returns:
         tuple[list, list, list]: A tuple containing the lists of loss, train accuracy, and test accuracy.
     """
+
     def train_epoch():
         model.train()
-        loss_max = 0.
+        loss_max = 0.0
         for batch_idx, (x, label) in enumerate(train_dataloader):
             x, label = x.to(device), label.to(device)
             logits = model.forward(x)
@@ -198,6 +202,7 @@ def train(epoch: int,
             optimizer.step()
             # scheduler.step()
         return loss_max
+
     loss_list = []
     train_acc_list = []
     test_acc_list = []
@@ -205,8 +210,8 @@ def train(epoch: int,
         # train
         start = time.time()
         loss = train_epoch()
-        logger.info(f'Epoch {ep}')
-        logger.info(f'loss: {loss}')
+        logger.info(f"Epoch {ep}")
+        logger.info(f"loss: {loss}")
         logger.info(f'lr_rate: {optimizer.param_groups[0]["lr"]}')
         loss_list.append(float(loss))
 
@@ -216,14 +221,13 @@ def train(epoch: int,
 
         acc, correct, total = judge(model, test_dataloader, features)
         logger.info(f"test set acc: {acc:.2f}")
-        recall = ''
+        recall = ""
         for i in range(features):
-            recall += f'{correct[i]} / {total[i]}   '
-        logger.info(f'RECALL: {recall}')
+            recall += f"{correct[i]} / {total[i]}   "
+        logger.info(f"RECALL: {recall}")
         test_acc_list.append(float(acc))
 
-        torch.save(model.state_dict(), model_save_path /
-                   get_model_name(ep, model_name))
+        torch.save(model.state_dict(), model_save_path / get_model_name(ep, model_name))
 
         end = time.time()
         logger.info(f"epoch consume: {end - start:.2f}s")
@@ -235,19 +239,21 @@ if __name__ == "__main__":
     # Init
     # ------------------------------------------------------------
     logger.add(log_path, rotation=log_rotation)
-    device = torch.device('cuda')
+    device = torch.device("cuda")
     # -----------------------------
-    transform = transforms.Compose([
-        transforms.ToPILImage(),
-        transforms.RandomHorizontalFlip(),
-        transforms.RandomRotation(90),
-        transforms.ToTensor(),
-        transforms.Normalize((0.485, 0.456, 0.406),
-                             (0.229, 0.224, 0.225)),
-    ])
+    transform = transforms.Compose(
+        [
+            transforms.ToPILImage(),
+            # transforms.RandomHorizontalFlip(),
+            # transforms.RandomRotation(90),
+            transforms.ToTensor(),
+            transforms.Normalize((0.485, 0.456, 0.406), (0.229, 0.224, 0.225)),
+        ]
+    )
 
     train_dataloader, test_dataloader, features = TorchFactory.get_dataloader(
-        data_name, transform)
+        data_name, transform
+    )
     # -----------------------------
     model = TorchFactory.get_model(model_name, features)
     model.to(device)
@@ -267,7 +273,7 @@ if __name__ == "__main__":
         criteon,
         optimizer,
         model_name,
-        features
+        features,
     )
     best_index = test_acc_list.index(max(test_acc_list))
     # -----------------------------
@@ -275,8 +281,11 @@ if __name__ == "__main__":
     best_model_path = model_save_path / best_model_name
     shutil.copy(best_model_path, best_model_save_path)
     # 虽然保存了表现最好的模型，但我们不适用它进行在训练，因为它可能会过拟合
-    logger.info('The best model is {}, which accuracy is {:.2f}. And save in {}'.format(
-        best_model_name, test_acc_list[best_index], best_model_save_path))
+    logger.info(
+        "The best model is {}, which accuracy is {:.2f}. And save in {}".format(
+            best_model_name, test_acc_list[best_index], best_model_save_path
+        )
+    )
 
     plot_curve(loss_list)
     plot_curve(train_acc_list)

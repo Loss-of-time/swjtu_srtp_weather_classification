@@ -19,7 +19,7 @@ def backup_folder(source_folder: Path, backup_folder: Path) -> None:
         logger.info("文件夹备份失败:", e)
 
 
-class ImageOperation():
+class ImageOperation:
     @staticmethod
     def min_dimension(image_path: Path | str, min_dimension: int):
         image = Image.open(image_path)
@@ -47,30 +47,29 @@ class ImageOperation():
         right = (width + target_size) / 2
         bottom = (height + target_size) / 2
         # 进行中心裁剪
-        cropped_image = image.crop(
-            (int(left), int(top), int(right), int(bottom)))
+        cropped_image = image.crop((int(left), int(top), int(right), int(bottom)))
         return cropped_image
 
 
-class PathOperation():
+class PathOperation:
     @staticmethod
     def apply_label(path: Path, label):
-        with open(label, 'r') as f:
+        with open(label, "r") as f:
             labels = f.readlines()
 
         for i in labels:
-            if i[-1] == '\n':
+            if i[-1] == "\n":
                 i = i[:-1]
-            file, t = tuple(i.split('->'))
-            file_name, suffix = tuple(file.split('.'))
-            os.rename(path/file, path/'.'.join([file_name, t, suffix]))
+            file, t = tuple(i.split("->"))
+            file_name, suffix = tuple(file.split("."))
+            os.rename(path / file, path / ".".join([file_name, t, suffix]))
 
     @staticmethod
     def delete_d(path: Path):
         for i in os.listdir(path):
-            if i.split('.')[-2] == 'd':
+            if i.split(".")[-2] == "d":
                 os.remove(path / i)
-                logger.info(f'{path / i} deleted.')
+                logger.info(f"{path / i} deleted.")
 
     @staticmethod
     def reshape(path: Path, w, h):
@@ -78,7 +77,7 @@ class PathOperation():
             image = Image.open(path / i)
             image = image.resize((w, h))
             image.save(path / i)
-            logger.info('{} reshaped'.format(path / i))
+            logger.info("{} reshaped".format(path / i))
 
     @staticmethod
     def center_crop_images(input_path: Path, target: int):
@@ -91,15 +90,15 @@ class PathOperation():
     @staticmethod
     def add_type(path: Path, type: str):
         for i in os.listdir(path):
-            sp = i.split('.')
-            if type == '':
+            sp = i.split(".")
+            if type == "":
                 sp[-2] = sp[-1]
                 sp = sp[:-1]
             else:
                 sp.append(sp[-1])
                 sp[-2] = type
             raw = path / i
-            tar = path / '.'.join(sp)
+            tar = path / ".".join(sp)
             os.rename(raw, tar)
             logger.info("{} -> {}".format(raw, tar))
 
@@ -112,7 +111,7 @@ class PathOperation():
         split_point = int(len(files) * a_percent)
         for i in range(0, split_point):
             shutil.copyfile(raw / files[i], path_a / files[i])
-            logger.info('{} -> {}'.format(raw / files[i], path_a / files[i]))
+            logger.info("{} -> {}".format(raw / files[i], path_a / files[i]))
         for i in range(split_point, len(files)):
             shutil.copyfile(raw / files[i], path_b / files[i])
-            logger.info('{} -> {}'.format(raw / files[i], path_b / files[i]))
+            logger.info("{} -> {}".format(raw / files[i], path_b / files[i]))
