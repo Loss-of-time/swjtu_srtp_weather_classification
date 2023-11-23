@@ -1,3 +1,4 @@
+from typing import Any
 from torch.utils.data import Dataset
 from torchvision.io import read_image
 import os
@@ -46,3 +47,60 @@ class cls_dataset(Dataset):
             target = item["target"]
             count[target] += 1
         return f"图片数量：晴({count[0]}) 阴({count[1]}) 雨({count[2]}) 雪({count[3]}) 雾({count[4]}) 夜晚({count[5]})"
+
+
+from pathlib import Path
+from torchvision.transforms import Compose
+
+
+class RSCM2017(Dataset):
+    type_num: int = 6
+    type_dict = {
+        "cloudy": 0,
+        "haze": 1,
+        "rainy": 2,
+        "snow": 3,
+        "sunny": 4,
+        "thunder": 5,
+    }
+
+    def __init__(self, path: str | Path, transform: Compose) -> None:
+        super().__init__()
+        self.images = []
+        self.labels = []
+
+        for root, dirs, files in os.walk(path):
+            for file in files:
+                if file.split(".")[-1] == "jpg":
+                    self.images.append(os.path.join(root, file))
+                    self.labels.append(self.type_dict[root.split("\\")[-1]])
+
+    def __getitem__(self, index) -> Any:
+        image = read_image(self.images[index])
+        label = self.labels[index]
+        return image, label
+
+    def __len__(self) -> int:
+        return len(self.images)
+
+
+from torchvision import transforms
+
+if __name__ == "__main__":
+    transform = Compose(
+        [
+            transforms.ToPILImage(),
+            # transforms.RandomHorizontalFlip(),
+            # transforms.RandomRotation(90),
+            transforms.ToTensor(),
+            transforms.Normalize((0.485, 0.456, 0.406), (0.229, 0.224, 0.225)),
+        ]
+    )
+
+    path = Path(
+        r"C:\Code\Python\swjtu_srtp_weather_classification\data\weather_classification"
+    )
+
+    data = RSCM2017(path, transform)
+
+    print(len(data))
