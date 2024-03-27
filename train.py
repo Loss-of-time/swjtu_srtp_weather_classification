@@ -45,13 +45,22 @@ class TorchFactory(object):
         features = 0
         if data_name == "mine":
             train_set = cls_dataset(train_set_path, transform=transform)
-            test_set = cls_dataset(test_set_path, transform=transform)
+            test_set = cls_dataset(
+                test_set_path,
+                transform=transforms.Compose(
+                    [
+                        transforms.ToPILImage(),
+                        transforms.ToTensor(),
+                        transforms.Normalize(
+                            (0.485, 0.456, 0.406), (0.229, 0.224, 0.225)
+                        ),
+                    ]
+                ),
+            )
             logger.info(train_set)
             features = cls_dataset.type_num
         elif data_name == "rscm":
-            path = Path(
-                r"C:\Code\Python\swjtu_srtp_weather_classification\data\weather_classification"
-            )
+            path = Path(r"data\wcpd")
             date_set = RSCM2017(path, transform)
             train_set, test_set = random_split(date_set, [0.8, 0.2])
             features = RSCM2017.type_num
@@ -251,9 +260,14 @@ if __name__ == "__main__":
     transform = transforms.Compose(
         [
             transforms.ToPILImage(),
+            transforms.RandomRotation(15),
+            transforms.RandomRotation(15),
+            transforms.RandomRotation(15),
+            transforms.RandomRotation(15),
             # transforms.RandomHorizontalFlip(),
-            # transforms.RandomRotation(90),
-            transforms.Resize((128, 128)),
+            # transforms.RandomVerticalFlip(),
+            transforms.RandomGrayscale(p=0.1),
+            # transforms.Resize((128, 128)),
             transforms.ToTensor(),
             transforms.Normalize((0.485, 0.456, 0.406), (0.229, 0.224, 0.225)),
         ]
